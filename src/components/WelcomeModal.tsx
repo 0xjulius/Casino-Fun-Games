@@ -1,81 +1,78 @@
-"import client";
+import { PlusCircle, Bell, User, Crown } from "lucide-react";
 
-import { useState, useEffect } from "react";
-import { ShieldAlert, Sparkles } from "lucide-react";
-
-interface WelcomeModalProps {
-  onAccept?: () => void;
+interface HeaderProps {
+  balance?: number;
+  onDeposit?: () => void;
 }
 
-export default function WelcomeModal({ onAccept }: WelcomeModalProps) {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-
-  useEffect(() => {
-    // Tarkistetaanko onko käyttäjä jo hyväksynyt vastuuvapauslausekkeen tällä istunnolla
-    const hasAccepted = sessionStorage.getItem("olympus_disclaimer_accepted");
-    if (!hasAccepted) {
-      setIsOpen(true);
-    }
-  }, []);
-
-  const handleAccept = () => {
-    sessionStorage.setItem("olympus_disclaimer_accepted", "true");
-    setIsOpen(false);
-    onAccept?.();
-  };
-
-  if (!isOpen) return null;
+export default function Header({ balance = 1250.50, onDeposit }: HeaderProps) {
+  // Muotoillaan saldo selkeäksi dollarisummaksi ($2,000.00)
+  const formattedBalance = "$" + balance.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm select-none animate-in fade-in duration-200">
-      <div className="max-w-md w-full bg-[#FAF6F0] border border-[#E2D6C3] rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-6 text-[#2D2621]">
+    <header className="absolute top-0 left-0 right-0 z-30 h-16 bg-[#FAF6F0]/90 backdrop-blur-md border-b border-[#E2D6C3] px-2.5 sm:px-6 flex items-center justify-between select-none shadow-xs">
+      
+      {/* Vasen reuna: Logo / Brändi */}
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#AA7C11] flex items-center justify-center text-[#FAF6F0] font-serif font-bold text-base sm:text-lg shadow-inner border border-[#F3E5AB]">
+          ✦
+        </div>
+        <div className="flex flex-col justify-center">
+          <h1 className="font-serif font-bold text-xs sm:text-base tracking-wider text-[#2D2621] leading-tight whitespace-nowrap">
+            AGORA <span className="text-amber-600 font-normal text-[10px] sm:text-xs">Bet</span>
+          </h1>
+          <div className="hidden sm:flex items-center gap-1 text-[9px] text-[#8C827A] font-medium tracking-wide">
+            <Crown className="w-2.5 h-2.5 text-amber-600" />
+            <span>VIP LOUNGE</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Oikea reuna: Saldo, talletus ja profiili */}
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         
-        {/* Otsikko ja kuvake */}
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/15 flex items-center justify-center text-amber-700 border border-[#D4AF37]/30 shrink-0">
-            <ShieldAlert className="w-6 h-6 text-[#D4AF37]" />
-          </div>
-          <div>
-            <h2 className="text-xl font-serif font-bold text-[#2D2621] flex items-center gap-2">
-              Portfolio Lab <span className="text-amber-600">✦</span>
-            </h2>
-            <p className="text-xs text-[#8C827A] uppercase tracking-wider font-medium">
-              Entertainment Only / Vain viihdekäyttöön
-            </p>
+        {/* Saldo-laatikko (Siisti & ei rivity) */}
+        <div className="flex items-center gap-1.5 bg-[#F4EBE1]/90 border border-[#E2D6C3] px-2.5 sm:px-3 py-1.5 rounded-xl shadow-inner whitespace-nowrap">
+          <div className="flex flex-col text-right">
+            <span className="hidden sm:block text-[9px] text-[#8C827A] font-semibold leading-none uppercase tracking-wider">
+              Balance
+            </span>
+            <span className="text-xs sm:text-sm font-bold text-[#2D2621] font-mono tracking-tight leading-tight">
+              {formattedBalance}
+            </span>
           </div>
         </div>
 
-        {/* Tekstisisältö (Englanniksi ja Suomeksi) */}
-        <div className="space-y-4 text-sm text-[#5C534B] leading-relaxed">
-          {/* Englanti */}
-          <div className="space-y-1">
-            <p className="font-semibold text-[#2D2621]">English Disclaimer:</p>
-            <p>
-              This application is a <strong>portfolio demonstration project</strong> created for entertainment and educational purposes only. It does not involve real money gambling, payouts, or financial transactions. There are no real users of this application, and it is not a gambling service. All bets and outcomes are simulated for demonstration purposes.
-            </p>
-          </div>
-
-          <div className="w-full h-[1px] bg-[#E2D6C3]" />
-
-          {/* Suomi */}
-          <div className="space-y-1">
-            <p className="font-semibold text-[#2D2621]">Vastuuvapauslauseke (Suomi):</p>
-            <p>
-              Tämä sovellus on <strong>ohjelmistoportfolion esittelyprojekti</strong>, joka on tarkoitettu ainoastaan viihde- ja opiskelukäyttöön tekniseksi näytteeksi (web-kehitys, animaatiot ja pelilogiikka). Sivustolla ei ole oikeita käyttäjiä. Sivustolla ei voi pelata oikealla rahalla, eikä se ole rahapelisivusto.
-            </p>
-          </div>
-        </div>
-
-        {/* Hyväksymisnappi */}
+        {/* Talleta-painike */}
         <button
-          onClick={handleAccept}
-          className="w-full py-3 px-6 rounded-2xl bg-[#D4AF37] hover:bg-[#C29F2F] text-white font-serif font-bold text-sm tracking-wide shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+          onClick={onDeposit}
+          className="flex items-center justify-center gap-1 bg-gradient-to-r from-[#D4AF37] to-[#C59B27] hover:from-[#E2BE48] hover:to-[#D4AF37] text-[#2D2621] font-bold text-xs px-2.5 sm:px-3.5 py-2 rounded-xl shadow-sm border border-[#F3E5AB] transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+          title="Deposit"
         >
-          <Sparkles className="w-4 h-4 text-white" />
-          I Understand / Ymmärrän
+          <PlusCircle className="w-3.5 h-3.5 text-[#2D2621] shrink-0" />
+          <span className="hidden sm:inline">Deposit</span>
         </button>
 
+        {/* Ilmoitukset (Mobiilissa hieman tiiviimpi) */}
+        <button 
+          className="p-1.5 sm:p-2 rounded-xl bg-[#F0E8DC]/80 hover:bg-[#E2D6C3] text-[#2D2621] transition-all cursor-pointer border border-[#E2D6C3] shadow-xs relative shrink-0"
+          title="Notifications"
+        >
+          <Bell className="w-3.5 h-3.5 text-[#4A423C]" />
+          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
+        </button>
+
+        {/* Profiili */}
+        <div className="flex items-center pl-1 sm:pl-1.5 border-l border-[#E2D6C3] shrink-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F0E8DC] border border-[#D4AF37]/50 flex items-center justify-center text-[#2D2621] font-bold shadow-xs cursor-pointer hover:bg-[#E2D6C3] transition-all">
+            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-800" />
+          </div>
+        </div>
+
       </div>
-    </div>
+    </header>
   );
 }

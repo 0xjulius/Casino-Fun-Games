@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ShieldCheck, Layers, Info } from "lucide-react";
+import bgControls from "../assets/bg-controls.png";
 import DemoWalletModal from "../components/DemoWalletModal";
 import {
   motion,
@@ -62,7 +63,6 @@ const TOP = 44;
 const BIN_H = 34;
 const BOTTOM_PAD = 18;
 
-// Clean multipliers ensuring exact dollar/cent outcomes (e.g. $10.00 * 1.2 = $12.00)
 const HALF_PAYTABLE: Record<Risk, Record<number, number[]>> = {
   low: {
     8: [6.0, 2.5, 1.2, 0.9, 0.6],
@@ -138,7 +138,7 @@ function geometry(rows: number) {
   const binTop = VB_H - BOTTOM_PAD - BIN_H;
   const lastPegY = binTop - 22;
   const rs = (lastPegY - TOP) / (rows - 1);
-  const pegR = Math.min(4.2, Math.max(2.4, sp * 0.085));
+  const pegR = Math.min(6.0, Math.max(3.5, sp * 0.12));
   const ballR = Math.min(8, sp * 0.22);
   return { sp, rs, pegR, ballR, binTop, cx: VB_W / 2 };
 }
@@ -448,7 +448,7 @@ export default function PlinkoGame({
   }
 
   const binW = g.sp - 4;
-  const fontSize = rows >= 15 ? 10 : rows >= 13 ? 11 : 13;
+  const fontSize = rows >= 15 ? 13 : rows >= 13 ? 15 : 17;
 
   const mainLabel =
     mode === "manual"
@@ -519,15 +519,19 @@ export default function PlinkoGame({
             </button>
           </div>
 
-          {/* Game Layout */}
-          <div className="flex flex-col lg:grid lg:grid-cols-[320px_1fr] gap-4 mb-6">
-            <div className="order-1 lg:order-2 flex flex-col gap-4">
-              <div className="rounded-2xl border border-[#E2D6C3] bg-[#EFE8DC] shadow-[inset_0_2px_6px_rgba(0,0,0,0.05)] p-3 sm:p-4 flex flex-col">
-                <div className="flex items-center justify-between gap-2 mb-2 min-h-[30px]">
-                  <span className="text-xs font-semibold text-stone-400 flex-none">
+          {/* Game Layout - Mobiilitila / pino-tilassa ennen xl-breakpointtia, desktop vain xl+ */}
+          <div className="flex flex-col xl:grid xl:grid-cols-[320px_1fr] gap-4 mb-6">
+            
+            {/* Pelilauta */}
+            <div className="order-1 xl:order-2 flex flex-col gap-4">
+              <div className="rounded-3xl border-2 border-amber-400/70 bg-gradient-to-b from-[#FAF5EE] via-[#F3E7D7] to-[#E5D4BC] shadow-[0_15px_35px_rgba(0,0,0,0.12),inset_0_2px_5px_rgba(255,255,255,0.8)] p-4 sm:p-6 flex flex-col relative">
+                
+                {/* Last drops -osio */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 px-1">
+                  <span className="text-xs font-bold text-[#6A5E53] tracking-wider uppercase">
                     Last drops
                   </span>
-                  <div className="flex items-center gap-1.5 justify-end overflow-hidden">
+                  <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto justify-start sm:justify-end pb-2 pt-1 scrollbar-none">
                     <AnimatePresence initial={false}>
                       {results.map((r, index) => {
                         const tier = TIERS[tierIndex(r.mult)];
@@ -544,7 +548,7 @@ export default function PlinkoGame({
                               damping: 25,
                             }}
                             title={`${r.profit >= 0 ? "+" : "-"}${fmtCurrency(Math.abs(r.profit))}`}
-                            className="flex-none rounded-md px-1.5 py-1 text-[11px] font-bold font-mono shadow-sm"
+                            className="flex-none rounded-md px-1.5 py-1 text-[11px] font-bold font-sans tracking-tight shadow-sm"
                             style={{
                               background: `linear-gradient(to bottom, ${tier.from}, ${tier.to})`,
                               color: tier.text,
@@ -558,166 +562,172 @@ export default function PlinkoGame({
                   </div>
                 </div>
 
-                <svg
-                  viewBox={`0 0 ${VB_W} ${VB_H}`}
-                  className="w-full h-auto select-none"
-                  role="img"
-                  aria-label="Plinko board"
+                {/* Itse Plinko-svg-lauta taustakuvalla ja filtterillä */}
+                <div 
+                  className="rounded-2xl bg-cover bg-center border border-amber-300/50 p-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.15)] overflow-hidden relative"
+                  style={{ backgroundImage: `url(${bgControls})` }}
                 >
-                  <defs>
-                    {TIERS.map((t, i) => (
-                      <linearGradient
-                        key={i}
-                        id={`plinko-bin-${i}`}
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
+                  <div className="absolute inset-0 bg-gradient-to-b from-[#FAF5EE]/80 via-[#FAF5EE]/60 to-[#4A3B2C]/5 backdrop-blur-[2px] pointer-events-none" />
+
+                  <svg
+                    viewBox={`0 0 ${VB_W} ${VB_H}`}
+                    className="w-full h-auto select-none relative z-10"
+                    role="img"
+                    aria-label="Plinko board"
+                  >
+                    <defs>
+                      {TIERS.map((t, i) => (
+                        <linearGradient
+                          key={i}
+                          id={`plinko-bin-${i}`}
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop offset="0%" stopColor={t.from} />
+                          <stop offset="100%" stopColor={t.to} />
+                        </linearGradient>
+                      ))}
+                      <radialGradient id="plinko-peg" cx="35%" cy="35%" r="70%">
+                        <stop offset="0%" stopColor="#FFFBEB" />
+                        <stop offset="100%" stopColor="#B45309" />
+                      </radialGradient>
+                      <radialGradient
+                        id="plinko-ball"
+                        cx="35%"
+                        cy="35%"
+                        r="70%"
                       >
-                        <stop offset="0%" stopColor={t.from} />
-                        <stop offset="100%" stopColor={t.to} />
-                      </linearGradient>
-                    ))}
-                    <radialGradient id="plinko-peg" cx="35%" cy="35%" r="70%">
-                      <stop offset="0%" stopColor="#F3E5AB" />
-                      <stop offset="100%" stopColor="#A9803A" />
-                    </radialGradient>
-                    <radialGradient id="plinko-ball" cx="35%" cy="35%" r="70%">
-                      <stop offset="0%" stopColor="#FFFFFF" />
-                      <stop offset="45%" stopColor="#FDE68A" />
-                      <stop offset="100%" stopColor="#F59E0B" />
-                    </radialGradient>
-                  </defs>
+                        <stop offset="0%" stopColor="#FFFFFF" />
+                        <stop offset="45%" stopColor="#FDE68A" />
+                        <stop offset="100%" stopColor="#D97706" />
+                      </radialGradient>
+                    </defs>
 
-                  {pegs.map((p) => (
-                    <g key={p.key}>
-                      <circle
-                        cx={p.x}
-                        cy={p.y + 1.2}
-                        r={g.pegR}
-                        fill="rgba(0,0,0,0.12)"
-                      />
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r={g.pegR}
-                        fill="url(#plinko-peg)"
-                      />
-                    </g>
-                  ))}
-
-                  {ballsRef.current.map((ball) => {
-                    const pos = ballPosition(ball);
-                    return (
-                      <circle
-                        key={ball.id}
-                        cx={pos.x}
-                        cy={pos.y}
-                        r={ball.r}
-                        fill="url(#plinko-ball)"
-                        stroke="#FFFFFF"
-                        strokeWidth="1.5"
-                        opacity={pos.opacity}
-                        style={{
-                          filter:
-                            "drop-shadow(0 2px 4px rgba(180,120,20,0.55))",
-                        }}
-                      />
-                    );
-                  })}
-
-                  {multipliers.map((m, k) => {
-                    const tier = TIERS[tierIndex(m)];
-                    const hitAt = hitsRef.current[k];
-                    const p = hitAt
-                      ? Math.min(1, Math.max(0, (now - hitAt) / 260))
-                      : 1;
-                    const dip = hitAt && p < 1 ? 7 * Math.sin(Math.PI * p) : 0;
-                    const x = g.cx + (k - rows / 2) * g.sp - binW / 2;
-                    return (
-                      <g key={k} transform={`translate(0 ${dip.toFixed(2)})`}>
-                        <rect
-                          x={x}
-                          y={g.binTop}
-                          width={binW}
-                          height={BIN_H}
-                          rx={7}
-                          fill={`url(#plinko-bin-${tierIndex(m)})`}
-                          stroke="rgba(255,255,255,0.35)"
-                          strokeWidth="1"
+                    {pegs.map((p) => (
+                      <g key={p.key}>
+                        <circle
+                          cx={p.x}
+                          cy={p.y + 1.2}
+                          r={g.pegR}
+                          fill="rgba(0,0,0,0.18)"
                         />
-                        {hitAt && p < 1 && (
+                        <circle
+                          cx={p.x}
+                          cy={p.y}
+                          r={g.pegR}
+                          fill="url(#plinko-peg)"
+                          stroke="#FEF3C7"
+                          strokeWidth="0.5"
+                        />
+                      </g>
+                    ))}
+
+                    {ballsRef.current.map((ball) => {
+                      const pos = ballPosition(ball);
+                      return (
+                        <circle
+                          key={ball.id}
+                          cx={pos.x}
+                          cy={pos.y}
+                          r={ball.r}
+                          fill="url(#plinko-ball)"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.5"
+                          opacity={pos.opacity}
+                          style={{
+                            filter:
+                              "drop-shadow(0 3px 6px rgba(180,100,10,0.7))",
+                          }}
+                        />
+                      );
+                    })}
+
+                    {multipliers.map((m, k) => {
+                      const tier = TIERS[tierIndex(m)];
+                      const hitAt = hitsRef.current[k];
+                      const p = hitAt
+                        ? Math.min(1, Math.max(0, (now - hitAt) / 260))
+                        : 1;
+                      const dip =
+                        hitAt && p < 1 ? 7 * Math.sin(Math.PI * p) : 0;
+                      const x = g.cx + (k - rows / 2) * g.sp - binW / 2;
+                      return (
+                        <g key={k} transform={`translate(0 ${dip.toFixed(2)})`}>
                           <rect
                             x={x}
                             y={g.binTop}
                             width={binW}
                             height={BIN_H}
                             rx={7}
-                            fill="#FFFFFF"
-                            opacity={0.45 * (1 - p)}
+                            fill={`url(#plinko-bin-${tierIndex(m)})`}
+                            stroke="rgba(255,255,255,0.6)"
+                            strokeWidth="1.2"
                           />
-                        )}
+                          {hitAt && p < 1 && (
+                            <rect
+                              x={x}
+                              y={g.binTop}
+                              width={binW}
+                              height={BIN_H}
+                              rx={7}
+                              fill="#FFFFFF"
+                              opacity={0.5 * (1 - p)}
+                            />
+                          )}
+                          <text
+                            x={x + binW / 2}
+                            y={g.binTop + BIN_H / 2}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fontSize={fontSize}
+                            fontWeight="600"
+                            fill={tier.text}
+                            fontFamily="system-ui, -apple-system, sans-serif"
+                            style={{
+                              filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.4))",
+                            }}
+                          >
+                            {fmtMult(m)}x
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {floatsRef.current.map((f) => {
+                      const p = Math.min(1, (now - f.ts) / 1000);
+                      return (
                         <text
-                          x={x + binW / 2}
-                          y={g.binTop + BIN_H / 2}
+                          key={f.id}
+                          x={f.x}
+                          y={f.y - 34 * p}
                           textAnchor="middle"
-                          dominantBaseline="central"
-                          fontSize={fontSize}
-                          fontWeight="800"
-                          fill={tier.text}
-                          fontFamily="ui-monospace, monospace"
+                          fontSize="20"
+                          fontWeight="700"
+                          fill={f.win ? "#059669" : "#059669"}
+                          stroke="#FFFFFF"
+                          strokeWidth="2.5"
+                          paintOrder="stroke"
+                          opacity={1 - p * p}
+                          fontFamily="system-ui, -apple-system, sans-serif"
                         >
-                          {fmtMult(m)}x
+                          {f.text}
                         </text>
-                      </g>
-                    );
-                  })}
-
-                  {floatsRef.current.map((f) => {
-                    const p = Math.min(1, (now - f.ts) / 1000);
-                    return (
-                      <text
-                        key={f.id}
-                        x={f.x}
-                        y={f.y - 34 * p}
-                        textAnchor="middle"
-                        fontSize="13"
-                        fontWeight="800"
-                        fill={f.win ? "#059669" : "#E11D48"}
-                        stroke="#FAF6F0"
-                        strokeWidth="3"
-                        paintOrder="stroke"
-                        opacity={1 - p * p}
-                        fontFamily="ui-monospace, monospace"
-                      >
-                        {f.text}
-                      </text>
-                    );
-                  })}
-                </svg>
+                      );
+                    })}
+                  </svg>
+                </div>
               </div>
-
-              <div className="block lg:hidden">{actionButton}</div>
             </div>
 
-            {/* CONTROLS */}
-            <div className="order-2 lg:order-1 rounded-2xl p-3 sm:p-4 border border-[#E5DAC8] bg-[#F4EFE6] flex flex-col gap-4">
-              <div className="flex p-1 bg-[#F4EBE1] rounded-2xl border border-[#E2D6C3]">
-                {(["manual", "auto"] as Mode[]).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => switchMode(m)}
-                    className={`flex-1 py-2 text-xs font-serif font-bold rounded-xl transition-all cursor-pointer capitalize ${
-                      mode === m
-                        ? "bg-[#FAF6F0] text-amber-900 shadow-sm border border-[#E2D6C3]"
-                        : "text-[#8C827A] hover:text-[#2D2621]"
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
+            {/* CONTROLS - Järjestys: Place bet -> Bet Amount -> Risk -> Rows -> Manual | Auto */}
+            <div className="order-2 xl:order-1 rounded-2xl p-3 sm:p-4 border border-[#E5DAC8] bg-[#F4EFE6] flex flex-col gap-4">
+              
+              {/* 1. PLACE BET (Mobiilissa ylimpänä, työpöydällä (xl) piilossa täältä ja näkyy alhaalla) */}
+              <div className="block xl:hidden">{actionButton}</div>
 
+              {/* 2. BET AMOUNT */}
               <div className="flex flex-col gap-2">
                 <div className="text-xs font-semibold px-1 text-[#8C827A]">
                   Bet Amount
@@ -774,6 +784,7 @@ export default function PlinkoGame({
                 </div>
               </div>
 
+              {/* 3. RISK */}
               <div className="flex flex-col gap-2">
                 <div className="text-xs font-semibold px-1 text-[#8C827A]">
                   Risk
@@ -796,6 +807,7 @@ export default function PlinkoGame({
                 </div>
               </div>
 
+              {/* 4. NUMBER OF ROWS */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-semibold text-[#8C827A]">
@@ -817,6 +829,7 @@ export default function PlinkoGame({
                 />
               </div>
 
+              {/* AUTOBET COUNT (jos auto-tila päällä) */}
               {mode === "auto" && (
                 <div className="flex flex-col gap-2">
                   <div className="text-xs font-semibold px-1 text-[#8C827A]">
@@ -837,8 +850,27 @@ export default function PlinkoGame({
                 </div>
               )}
 
-              <div className="hidden lg:block">{actionButton}</div>
+              {/* 5. MANUAL | AUTO */}
+              <div className="flex p-1 bg-[#F4EBE1] rounded-2xl border border-[#E2D6C3]">
+                {(["manual", "auto"] as Mode[]).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => switchMode(m)}
+                    className={`flex-1 py-2 text-xs font-serif font-bold rounded-xl transition-all cursor-pointer capitalize ${
+                      mode === m
+                        ? "bg-[#FAF6F0] text-amber-900 shadow-sm border border-[#E2D6C3]"
+                        : "text-[#8C827A] hover:text-[#2D2621]"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+
+              {/* Työpöydän action-nappi (näkyy vain xl-koosta alkaen kontrollipaneelin alareunassa) */}
+              <div className="hidden xl:block">{actionButton}</div>
             </div>
+
           </div>
 
           {/* Footer Features */}

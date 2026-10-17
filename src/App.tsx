@@ -6,7 +6,7 @@ import Header from "./components/Header";
 import RouletteGame from "./components/RouletteGame";
 import CrashGame from "./components/CrashGame";
 import PlinkoGame from "./components/PlinkoGame"; 
-import WelcomeModal from "./components/WelcomeModal"; // <-- Tuotu tähän
+import WelcomeModal from "./components/WelcomeModal";
 import GoldDust from "./components/GoldDust";
 import bgImage from "./assets/bg2.png";
 
@@ -14,13 +14,11 @@ export default function App() {
   const [mounted, setMounted] = useState(false);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   
-  // Yhteinen keskitetty saldo sovelluksen tasolla
   const [balance, setBalance] = useState(2000.00);
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Määritetään aktiivinen peli nykyisen URL-polun perusteella
   const activeGame = location.pathname.includes("crash") 
     ? "Crash" 
     : location.pathname.includes("plinko") 
@@ -51,10 +49,9 @@ export default function App() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Vastuuvapauslauseke (näkyy kerran per sessio) */}
       <WelcomeModal />
 
-      {/* Vasen sivupalkki (Kiinteä, täysi korkeus) */}
+      {/* Vasen sivupalkki */}
       <div className="h-full shrink-0 z-40 hidden md:block">
         <Sidebar 
           activeGame={activeGame} 
@@ -63,7 +60,6 @@ export default function App() {
         />
       </div>
 
-      {/* Mobiilin alavalikko */}
       <div className="md:hidden">
         <Sidebar 
           activeGame={activeGame} 
@@ -72,10 +68,9 @@ export default function App() {
         />
       </div>
 
-      {/* Keskialue: Kiinteä matala Header ylhäällä + Rullaava pelialue sen alla */}
-      <div className="flex-1 relative flex flex-col h-full overflow-hidden">
+      {/* Keskialue: Header + Pelialue (min-w-0 pitää huolen, ettei ylivuoda) */}
+      <div className="flex-1 relative flex flex-col h-full overflow-hidden min-w-0">
         
-        {/* Kasinon kiinteä yläpalkki näyttää yhteistä saldoa */}
         <div className="shrink-0 z-30">
           <Header 
             balance={balance} 
@@ -83,11 +78,9 @@ export default function App() {
           />
         </div>
 
-        {/* Pelialueen rullaava kontaineri headerin alapuolella */}
         <div className="flex-1 relative flex flex-col items-center justify-start overflow-y-auto pb-28 md:pb-24 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <GoldDust />
 
-          {/* Reititys pelien välillä */}
           <main className="w-full z-20 px-2 sm:px-4 pt-28 sm:pt-20">
             <Routes>
               <Route 
@@ -123,7 +116,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Chat-komponentti (Kiinteä oikealla / mobiilissa modaali) */}
+      {/* Chat-komponentti omassa lokerossaan oikeassa laidassa */}
       <Chat mobileOpen={mobileChatOpen} onCloseMobile={() => setMobileChatOpen(false)} />
     </div>
   );

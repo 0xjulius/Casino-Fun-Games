@@ -5,6 +5,8 @@ import { mockChatMessages, type ChatMessage } from "../data/mockData";
 interface ChatProps {
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export default function Chat({ mobileOpen = false, onCloseMobile }: ChatProps) {
@@ -22,7 +24,6 @@ export default function Chat({ mobileOpen = false, onCloseMobile }: ChatProps) {
     scrollToBottom();
   }, [messages, mobileOpen]);
 
-  // Ajastin, joka kiertää mockChatMessages-viestit alusta uudelleen loppuun päästyään
   useEffect(() => {
     const interval = setInterval(() => {
       const currentIndex = messageIndexRef.current;
@@ -128,13 +129,13 @@ export default function Chat({ mobileOpen = false, onCloseMobile }: ChatProps) {
 
   return (
     <>
-      {/* Desktopin kiinteä sivupalkki-chat */}
+      {/* Desktopin kiinteä sivupalkki-chat (reagoi collapse-tilaan sulavasti) */}
       <aside
         className={`hidden lg:flex flex-col bg-[#FAF6F0]/95 backdrop-blur-md border-l border-[#E2D6C3] select-none shrink-0 shadow-2xl z-40 transition-all duration-300 h-full ${
-          isCollapsed ? "w-20" : "w-80"
+          isCollapsed ? "w-16 items-center" : "w-80"
         }`}
       >
-        <div className="p-3.5 border-b border-[#E2D6C3] bg-[#F4EBE1]/60">
+        <div className={`p-3.5 border-b border-[#E2D6C3] bg-[#F4EBE1]/60 w-full ${isCollapsed ? "flex flex-col items-center justify-center py-4" : ""}`}>
           {!isCollapsed ? (
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
@@ -154,7 +155,7 @@ export default function Chat({ mobileOpen = false, onCloseMobile }: ChatProps) {
                   </div>
                 </div>
                 <button
-                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  onClick={() => setIsCollapsed(true)}
                   className="p-1.5 rounded-xl bg-[#EFE4D4] hover:bg-[#E2D6C3] text-[#2D2621] transition-all cursor-pointer shadow-sm"
                   title="Pienennä chat"
                 >
@@ -165,18 +166,13 @@ export default function Chat({ mobileOpen = false, onCloseMobile }: ChatProps) {
               {roomButton}
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3">
-              <button
-                onClick={() => setIsCollapsed(false)}
-                className="p-2 rounded-xl bg-[#EFE4D4] hover:bg-[#E2D6C3] text-[#2D2621] transition-all cursor-pointer shadow-sm"
-                title="Laajenna chat"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div className="p-2 rounded-xl bg-[#D4AF37]/15 text-amber-700">
-                <MessageSquare className="w-4 h-4" />
-              </div>
-            </div>
+            <button
+              onClick={() => setIsCollapsed(false)}
+              className="p-2 rounded-xl bg-[#EFE4D4] hover:bg-[#E2D6C3] text-[#2D2621] transition-all cursor-pointer shadow-sm flex items-center justify-center"
+              title="Laajenna chat"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
           )}
         </div>
 

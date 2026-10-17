@@ -12,7 +12,6 @@ export default function PlinkoPage() {
   const [activeGame, setActiveGame] = useState("Plinko");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   
-  // Yhteinen keskitetty saldo sovelluksen tasolla
   const [balance, setBalance] = useState(2000.00);
 
   return (
@@ -25,14 +24,14 @@ export default function PlinkoPage() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Vasen sivupalkki (Kiinteä, täysi korkeus) */}
+      {/* 1. Vasen sivupalkki (Kiinteä, ei saa kutistua) */}
       <div className="h-full shrink-0 z-40 hidden md:block">
         <Sidebar 
           activeGame={activeGame} 
           onSelectGame={(game) => {
             setActiveGame(game);
             if (game === "Crash") {
-              window.location.href = "/crash"; // Tai vastaava reitti
+              window.location.href = "/crash";
             } else if (game === "Roulette") {
               window.location.href = "/";
             }
@@ -57,10 +56,10 @@ export default function PlinkoPage() {
         />
       </div>
 
-      {/* Keskialue: Kiinteä matala Header ylhäällä + Rullaava pelialue sen alla */}
-      <div className="flex-1 relative flex flex-col h-full overflow-hidden">
+      {/* 2. Keskialue: Header + Pelialue (flex-1 ja min-w-0 pakottavat tämän joustamaan täydellisesti sivupalkin ja chatin välissä) */}
+      <div className="flex-1 relative flex flex-col h-full overflow-hidden min-w-0">
         
-        {/* Kasinon kiinteä yläpalkki näyttää yhteistä saldoa */}
+        {/* Kasinon kiinteä yläpalkki */}
         <div className="shrink-0 z-30">
           <Header 
             balance={balance} 
@@ -68,11 +67,11 @@ export default function PlinkoPage() {
           />
         </div>
 
-        {/* Pelialueen rullaava kontaineri headerin alapuolella */}
+        {/* Pelialueen rullaava kontaineri */}
         <div className="flex-1 relative flex flex-col items-center justify-start overflow-y-auto pb-28 md:pb-24 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <GoldDust />
 
-          <main className="w-full z-20 px-2 sm:px-4 pt-28 sm:pt-24 max-w-6xl mx-auto">
+          <main className="w-full z-20 px-2 sm:px-4 pt-28 sm:pt-24 max-w-6xl mx-auto flex justify-center">
             <PlinkoGame 
               balance={balance}
               setBalance={setBalance}
@@ -81,7 +80,7 @@ export default function PlinkoPage() {
         </div>
       </div>
 
-      {/* Chat-komponentti (Kiinteä oikealla / mobiilissa modaali) */}
+      {/* 3. Oikea chatti (Hoitaa desktopin sivupalkin ja mobiilin modaalin itse) */}
       <Chat mobileOpen={mobileChatOpen} onCloseMobile={() => setMobileChatOpen(false)} />
     </div>
   );
