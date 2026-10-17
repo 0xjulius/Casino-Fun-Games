@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ShieldCheck, Layers, Info } from "lucide-react";
-import bgControls from "../assets/bg-controls.png";
 import DemoWalletModal from "../components/DemoWalletModal";
 import {
   motion,
@@ -62,6 +61,7 @@ const MARGIN_X = 30;
 const TOP = 44;
 const BIN_H = 34;
 const BOTTOM_PAD = 18;
+const bgControls = "/images/bg-controls.png";
 
 const HALF_PAYTABLE: Record<Risk, Record<number, number[]>> = {
   low: {
