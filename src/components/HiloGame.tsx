@@ -552,14 +552,6 @@ export default function HiLoGame({
               </div>
             </div>
 
-            {/* Skip card (mobiili): kertoimen yläpuolella */}
-            <button
-              type="button"
-              onClick={skipCard}
-              className="lg:hidden w-full py-3 rounded-xl border-2 border-[#2D2621] bg-[#FAF6F0] hover:bg-[#EFE8DC] text-[#2D2621] font-serif font-bold text-sm transition-all active:scale-[0.98] cursor-pointer shadow-sm"
-            >
-              Skip card
-            </button>
 
             {playing ? (
               <div className="rounded-xl border-2 border-[#D4AF37] bg-gradient-to-r from-[#FBF3D5] to-[#F3E5AB] px-4 py-3 flex items-center justify-between gap-3 shadow-sm">
