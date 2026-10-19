@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  ArrowUp,
-  ArrowDown,
   ChevronUp,
   ChevronDown,
   ChevronsRight,
@@ -12,6 +10,8 @@ import {
   ShieldCheck,
   Layers,
   Info,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import DemoWalletModal from "./DemoWalletModal";
 import "../App.css";
@@ -43,7 +43,7 @@ interface HistoryStep {
   guess: Direction | "skip" | null; // null = aloituskortti
   mult: number | null; // kumulatiivinen kerroin kortin jälkeen
   result: "win" | "loss" | "skip" | null;
-  skipped?: boolean; // kortti on ohitettu (korvattu uudella kortilla)
+  skipped?: boolean;
 }
 
 const RTP = 0.98;
@@ -52,15 +52,11 @@ const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 const SUITS = ["♠", "♥", "♦", "♣"];
 const isRed = (suit: number) => suit === 1 || suit === 2;
 
-// Arvausvaihtoehdot nykyisen kortin mukaan. Vasen paikka on "Higher", oikea "Lower".
-//  - 2...Q: "Higher / same" ja "Lower / same" (sama arvo voittaa)
-//  - Ässä (A): "Higher" (A uudelleen häviää) ja "Same" (vain A voittaa)
-//  - Kuningas (K): "Same" (vain K voittaa) ja "Lower" (K uudelleen häviää)
 interface GuessOption {
   dir: Direction;
   label: string;
   p: number; // voittotodennäköisyys
-  strict: boolean; // true = sama arvo ei voita (vain A:n Higher ja K:n Lower)
+  strict: boolean;
 }
 
 function getOptions(rank: number): [GuessOption, GuessOption] {
@@ -187,7 +183,7 @@ export default function HiLoGame({
   const [history, setHistory] = useState<HistoryStep[]>([]);
   const [cumMult, setCumMult] = useState<number>(1);
   const [roundBet, setRoundBet] = useState<number>(0);
-  const [message, setMessage] = useState<string>("");
+  const [_message, setMessage] = useState<string>("");
   const [lossNote, setLossNote] = useState<string>("");
 
   const historyRef = useRef<HTMLDivElement>(null);
@@ -261,7 +257,6 @@ export default function HiLoGame({
       setStatus("lost");
       playSound("/sounds/lose.wav", 0.25);
       setMessage(`Round lost  -${fmt(roundBet)}`);
-      // Sama kortti A:lla/K:lla häviää, ellei pelaaja valinnut "Same"
       setLossNote(
         next.rank === rank
           ? `Same card (${RANKS[rank - 1]}) - only "Same" would have won`
@@ -282,8 +277,6 @@ export default function HiLoGame({
         { id: nextId(), card: next, guess: null, mult: null, result: null },
       ]);
     } else {
-      // Ohitettu kortti (esim. 9) merkitään "Skipped", ja uusi kortti (esim. J)
-      // jatkaa samalla kertoimella. Uusi kortti on se, jonka päälle arvataan seuraavaksi.
       setHistory((h) => [
         ...h.slice(0, -1),
         { ...h[h.length - 1], skipped: true },
@@ -307,7 +300,6 @@ export default function HiLoGame({
     else startRound();
   }
 
-  // ---------- Panoksen apufunktiot ----------
   function addBet(amount: number) {
     const current = Number.parseFloat(betAmount) || 0;
     setBetAmount((current + amount).toFixed(2));
@@ -364,7 +356,7 @@ export default function HiLoGame({
     </div>
   );
 
-  const guessRow = (slot: "left" | "right") => {
+const guessRow = (slot: "left" | "right") => {
     const opt = slot === "left" ? leftOpt : rightOpt;
     const disabled = !playing;
     const m = multFor(opt.p);
@@ -373,29 +365,29 @@ export default function HiLoGame({
         type="button"
         disabled={disabled}
         onClick={() => guess(opt)}
-        className={`w-full flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left transition-all active:scale-[0.98] ${
+        className={`w-full flex items-center justify-between gap-1.5 rounded-xl border px-2.5 py-2 text-left transition-all active:scale-[0.98] ${
           disabled
             ? "bg-[#EFE8DC] border-[#E2D6C3] text-[#8C827A] cursor-not-allowed"
             : "bg-[#FAF6F0] border-[#E2D6C3] text-[#2D2621] hover:border-[#D4AF37] shadow-sm cursor-pointer"
         }`}
       >
-        <div className="min-w-0">
-          <div className="text-xs sm:text-sm font-serif font-bold truncate">
+        <div className="min-w-0 flex-1">
+          <div className="text-[11px] sm:text-sm font-serif font-bold leading-tight break-words">
             {opt.label}
           </div>
-          <div className="text-[11px] font-mono font-semibold text-amber-800">
+          <div className="text-[10px] sm:text-[11px] font-mono font-semibold text-amber-800 mt-0.5">
             x{m.toFixed(2)}
           </div>
         </div>
-        <div className="flex items-center gap-1 flex-none rounded-lg bg-[#F4EBE1] border border-[#E2D6C3] px-2 py-1 text-[11px] font-mono font-bold">
+        <div className="flex items-center gap-1 flex-none rounded-lg bg-[#F4EBE1] border border-[#E2D6C3] px-1.5 py-1 text-[10px] sm:text-[11px] font-mono font-bold whitespace-nowrap">
           {opt.dir === "higher" ? (
-            <ArrowUp className="w-3 h-3 text-emerald-600" />
+            <ArrowUp className="w-3 h-3 text-emerald-600 flex-none" />
           ) : opt.dir === "lower" ? (
-            <ArrowDown className="w-3 h-3 text-rose-600" />
+            <ArrowDown className="w-3 h-3 text-rose-600 flex-none" />
           ) : (
-            <Equal className="w-3 h-3 text-amber-700" strokeWidth={3} />
+            <Equal className="w-3 h-3 text-amber-700 flex-none" strokeWidth={3} />
           )}
-          {(opt.p * 100).toFixed(2)}%
+          {(opt.p * 100).toFixed(1)}%
         </div>
       </button>
     );
@@ -419,24 +411,42 @@ export default function HiLoGame({
           type="button"
           disabled={disabled}
           onClick={() => guess(opt)}
-          className={`w-[150px] h-[230px] rounded-2xl border-2 flex flex-col items-center justify-between py-6 px-3 transition-all shadow-lg ${
+          className={`relative w-[130px] sm:w-[150px] h-[210px] sm:h-[230px] rounded-2xl border-2 flex flex-col items-center justify-between py-5 px-3 transition-all shadow-lg ${
             disabled
               ? "bg-gradient-to-b from-[#E8DFCB] to-[#DCCFB4] border-[#D3C5A8] text-[#8C827A] cursor-not-allowed"
               : "bg-gradient-to-b from-[#F3E5AB] via-[#FBF3D5] to-[#E9D79A] border-[#D4AF37] text-amber-950 hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] cursor-pointer"
           }`}
         >
-          {opt.dir === "higher" ? (
-            <ChevronUp className="w-10 h-10" strokeWidth={3} />
-          ) : opt.dir === "lower" ? (
-            <ChevronDown className="w-10 h-10" strokeWidth={3} />
-          ) : (
-            <Equal className="w-10 h-10" strokeWidth={3} />
-          )}
-          <span className="font-serif font-bold text-sm tracking-wide uppercase">
+          <div
+            className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold border ${
+              disabled
+                ? "bg-[#D9CDB6] border-[#C2B59C] text-[#6F665C]"
+                : opt.dir === "higher"
+                ? "bg-emerald-100 border-emerald-300 text-emerald-800"
+                : opt.dir === "lower"
+                ? "bg-rose-100 border-rose-300 text-rose-800"
+                : "bg-amber-100 border-amber-300 text-amber-800"
+            }`}
+          >
+            {(opt.p * 100).toFixed(1)}%
+          </div>
+
+          <div className="mt-4">
+            {opt.dir === "higher" ? (
+              <ChevronUp className="w-10 h-10" strokeWidth={3} />
+            ) : opt.dir === "lower" ? (
+              <ChevronDown className="w-10 h-10" strokeWidth={3} />
+            ) : (
+              <Equal className="w-10 h-10" strokeWidth={3} />
+            )}
+          </div>
+
+          <span className="font-serif font-bold text-xs sm:text-sm tracking-wide uppercase text-center">
             {opt.label}
           </span>
+
           <span
-            className={`w-full rounded-lg py-2 text-center font-mono font-bold text-base ${
+            className={`w-full rounded-lg py-1.5 text-center font-mono font-bold text-sm sm:text-base ${
               disabled
                 ? "bg-[#CFC2A6] text-[#6F665C]"
                 : "bg-[#2D2621] text-[#FAF6F0]"
@@ -445,7 +455,9 @@ export default function HiLoGame({
             x{m.toFixed(2)}
           </span>
         </button>
-        <span className="text-[11px] text-[#8C827A]">{caption}</span>
+        <span className="text-[10px] sm:text-[11px] text-[#8C827A] text-center">
+          {caption}
+        </span>
       </div>
     );
   };
@@ -456,28 +468,6 @@ export default function HiLoGame({
       ? `Cashout ${fmt(payout)}`
       : "Pick higher or lower"
     : "Place Bet";
-
-  const statusPill = (() => {
-    if (status === "idle")
-      return {
-        cls: "bg-[#F4EBE1] border-[#E2D6C3] text-[#8C827A]",
-        text: "Place your bet to start the round",
-      };
-    if (status === "playing")
-      return {
-        cls: "bg-amber-100 border-amber-400 text-amber-900",
-        text: `Current x${cumMult.toFixed(2)}`, // ei renderöidä: pelin aikana näytetään kerroinlaatikko
-      };
-    if (status === "lost")
-      return {
-        cls: "bg-rose-100 border-rose-400 text-rose-900",
-        text: message,
-      };
-    return {
-      cls: "bg-emerald-100 border-emerald-500 text-emerald-900",
-      text: message,
-    };
-  })();
 
   return (
     <div className="max-w-5xl mx-auto px-2 sm:px-4 py-2 antialiased text-[#2D2621] font-sans">
@@ -526,10 +516,81 @@ export default function HiLoGame({
           </button>
         </div>
 
-        <div className="flex flex-col lg:grid lg:grid-cols-[320px_1fr] gap-4 mb-6">
+        {/* Mobiilissa Current Cashout Value -laatikko tuotu heti ylös ennen pelialuetta */}
+        <div className="block lg:hidden mb-4">
+          {playing ? (
+            <div className="rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-r from-[#FBF3D5] via-[#FBF3D5] to-[#F3E5AB] px-5 py-3.5 flex items-center justify-between gap-3 shadow-md">
+              <div className="flex flex-col">
+                <span className="text-xs font-serif font-bold uppercase tracking-wider text-amber-900">
+                  Current Cashout Value
+                </span>
+                <span className="text-xs font-mono font-semibold text-amber-800">
+                  Multiplier: x{cumMult.toFixed(2)}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-mono font-extrabold text-emerald-900 leading-none block">
+                  {fmt(payout)}
+                </span>
+              </div>
+            </div>
+          ) : status === "cashed" ? (
+            <motion.div
+              key="cashed-banner-mob"
+              initial={{ opacity: 0, scale: 0.92, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 22 }}
+              className="relative overflow-hidden rounded-2xl border border-[#D4AF37] bg-[radial-gradient(ellipse_at_center,#FFA20F_0%,#EE8100_55%,#D96F00_100%)] shadow-[0_10px_24px_rgba(238,129,0,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)] px-4 py-4 flex items-center justify-between gap-2"
+            >
+              <Leaf className="w-7 h-7 text-lime-200 -rotate-[35deg] flex-none drop-shadow" />
+              <div className="flex flex-col items-center text-center min-w-0">
+                <span className="flex items-center gap-1.5 text-[11px] font-serif font-bold uppercase tracking-[0.18em] text-amber-50">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-100" />
+                  Cashed out x{cumMult.toFixed(2)}
+                </span>
+                <span className="text-3xl font-serif font-extrabold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] truncate max-w-full">
+                  +{payout.toFixed(2)} USD
+                </span>
+                <span className="text-[11px] font-mono font-bold text-amber-100/90">
+                  Profit +${(payout - roundBet).toFixed(2)}
+                </span>
+              </div>
+              <Leaf className="w-7 h-7 text-lime-200 rotate-[35deg] scale-x-[-1] flex-none drop-shadow" />
+            </motion.div>
+          ) : status === "lost" ? (
+            <motion.div
+              key="lost-banner-mob"
+              initial={{ opacity: 0, scale: 0.92, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 22 }}
+              className="rounded-2xl border border-rose-500 bg-[radial-gradient(ellipse_at_center,#EF5B67_0%,#D93645_60%,#B8232E_100%)] shadow-[0_10px_24px_rgba(217,54,69,0.3),inset_0_1px_2px_rgba(255,255,255,0.35)] px-4 py-4 flex flex-col items-center text-center"
+            >
+              <span className="flex items-center gap-1.5 text-xs font-serif font-bold uppercase tracking-[0.18em] text-rose-50">
+                <X className="w-3.5 h-3.5" strokeWidth={3} />
+                Round lost
+              </span>
+              <span className="text-3xl font-serif font-extrabold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)]">
+                -{roundBet.toFixed(2)} USD
+              </span>
+              {lossNote && (
+                <span className="mt-1 text-xs font-serif font-semibold text-rose-50">
+                  {lossNote}
+                </span>
+              )}
+            </motion.div>
+          ) : (
+            <div className="rounded-xl border border-[#E2D6C3] bg-[#F4EBE1] px-4 py-3 text-center text-xs font-serif font-bold text-[#8C827A]">
+              Place your bet to start the round
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col lg:grid lg:grid-cols-[300px_1fr] gap-4 mb-6">
+          
           {/* BOARD */}
           <div className="order-1 lg:order-2 rounded-2xl border border-[#E2D6C3] bg-[#EFE8DC] shadow-[inset_0_2px_6px_rgba(0,0,0,0.05)] p-3 sm:p-5 flex flex-col gap-4">
-            <div className="hidden lg:grid grid-cols-[1fr_auto_1fr] items-center justify-items-center gap-6 py-4">
+            
+            <div className="hidden lg:grid grid-cols-[1fr_auto_1fr] items-center justify-items-center gap-2 sm:gap-6 py-2 sm:py-4">
               {bigGuessCard("left")}
               {currentStack}
               {bigGuessCard("right")}
@@ -552,74 +613,91 @@ export default function HiLoGame({
               </div>
             </div>
 
+            {/* Mobiilissa Cashout-painike pelialueen sisällä (entisen kertoimbaatterin paikalla) */}
+            <div className="block lg:hidden">
+              <button
+                onClick={handleMainButton}
+                disabled={mainDisabled}
+                className={`w-full py-3.5 px-3 text-white font-serif font-bold text-base rounded-2xl shadow-xl border cursor-pointer transition-all active:scale-[0.98] whitespace-nowrap leading-tight disabled:cursor-not-allowed ${
+                  playing
+                    ? canCashout
+                      ? "bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border-emerald-300 ring-4 ring-emerald-500/20"
+                      : "bg-gradient-to-r from-stone-600 to-stone-700 border-stone-500 opacity-80"
+                    : "bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 hover:from-amber-500 hover:to-amber-600 border-amber-400/50"
+                }`}
+              >
+                {mainLabel}
+              </button>
+            </div>
 
-            {playing ? (
-              <div className="rounded-xl border-2 border-[#D4AF37] bg-gradient-to-r from-[#FBF3D5] to-[#F3E5AB] px-4 py-3 flex items-center justify-between gap-3 shadow-sm">
-                <div className="flex flex-col">
-                  <span className="text-[11px] sm:text-xs font-serif font-bold uppercase tracking-wider text-amber-900">
-                    Current multiplier
+            {/* Työpöydällä näytetään kertoimbaatteri tällä paikalla */}
+            <div className="hidden lg:block">
+              {playing ? (
+                <div className="rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-r from-[#FBF3D5] via-[#FBF3D5] to-[#F3E5AB] px-5 py-3.5 flex items-center justify-between gap-3 shadow-md">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-serif font-bold uppercase tracking-wider text-amber-900">
+                      Current Cashout Value
+                    </span>
+                    <span className="text-xs font-mono font-semibold text-amber-800">
+                      Multiplier: x{cumMult.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-3xl font-mono font-extrabold text-emerald-900 leading-none block">
+                      {fmt(payout)}
+                    </span>
+                  </div>
+                </div>
+              ) : status === "cashed" ? (
+                <motion.div
+                  key="cashed-banner-desk"
+                  initial={{ opacity: 0, scale: 0.92, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 22 }}
+                  className="relative overflow-hidden rounded-2xl border border-[#D4AF37] bg-[radial-gradient(ellipse_at_center,#FFA20F_0%,#EE8100_55%,#D96F00_100%)] shadow-[0_10px_24px_rgba(238,129,0,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)] px-4 py-4 flex items-center justify-between gap-2"
+                >
+                  <Leaf className="w-9 h-9 text-lime-200 -rotate-[35deg] flex-none drop-shadow" />
+                  <div className="flex flex-col items-center text-center min-w-0">
+                    <span className="flex items-center gap-1.5 text-xs font-serif font-bold uppercase tracking-[0.18em] text-amber-50">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-100" />
+                      Cashed out x{cumMult.toFixed(2)}
+                    </span>
+                    <span className="text-4xl font-serif font-extrabold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] truncate max-w-full">
+                      +{payout.toFixed(2)} USD
+                    </span>
+                    <span className="text-xs font-mono font-bold text-amber-100/90">
+                      Profit +${(payout - roundBet).toFixed(2)}
+                    </span>
+                  </div>
+                  <Leaf className="w-9 h-9 text-lime-200 rotate-[35deg] scale-x-[-1] flex-none drop-shadow" />
+                </motion.div>
+              ) : status === "lost" ? (
+                <motion.div
+                  key="lost-banner-desk"
+                  initial={{ opacity: 0, scale: 0.92, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 22 }}
+                  className="rounded-2xl border border-rose-500 bg-[radial-gradient(ellipse_at_center,#EF5B67_0%,#D93645_60%,#B8232E_100%)] shadow-[0_10px_24px_rgba(217,54,69,0.3),inset_0_1px_2px_rgba(255,255,255,0.35)] px-4 py-4 flex flex-col items-center text-center"
+                >
+                  <span className="flex items-center gap-1.5 text-xs font-serif font-bold uppercase tracking-[0.18em] text-rose-50">
+                    <X className="w-3.5 h-3.5" strokeWidth={3} />
+                    Round lost
                   </span>
-                  {cumMult === 1 && (
-                    <span className="text-[11px] font-serif text-amber-800 mt-0.5">
-                      Pick higher or lower
+                  <span className="text-4xl font-serif font-extrabold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)]">
+                    -{roundBet.toFixed(2)} USD
+                  </span>
+                  {lossNote && (
+                    <span className="mt-1 text-xs font-serif font-semibold text-rose-50">
+                      {lossNote}
                     </span>
                   )}
+                </motion.div>
+              ) : (
+                <div className="rounded-xl border border-[#E2D6C3] bg-[#F4EBE1] px-4 py-3 text-center text-sm font-serif font-bold text-[#8C827A]">
+                  Place your bet to start the round
                 </div>
-                <span className="text-3xl sm:text-4xl font-mono font-extrabold text-amber-950 leading-none">
-                  x{cumMult.toFixed(2)}
-                </span>
-              </div>
-            ) : status === "cashed" ? (
-              <motion.div
-                key="cashed-banner"
-                initial={{ opacity: 0, scale: 0.92, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 320, damping: 22 }}
-                className="relative overflow-hidden rounded-2xl border border-[#D4AF37] bg-[radial-gradient(ellipse_at_center,#FFA20F_0%,#EE8100_55%,#D96F00_100%)] shadow-[0_10px_24px_rgba(238,129,0,0.35),inset_0_1px_2px_rgba(255,255,255,0.45)] px-4 py-4 flex items-center justify-between gap-2"
-              >
-                <Leaf className="w-7 h-7 sm:w-9 sm:h-9 text-lime-200 -rotate-[35deg] flex-none drop-shadow" />
-                <div className="flex flex-col items-center text-center min-w-0">
-                  <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-serif font-bold uppercase tracking-[0.18em] text-amber-50">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-100" />
-                    Cashed out x{cumMult.toFixed(2)}
-                  </span>
-                  <span className="text-3xl sm:text-4xl font-serif font-extrabold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] truncate max-w-full">
-                    +{(payout - roundBet).toFixed(2)} USD
-                  </span>
-                  <span className="text-[11px] font-mono font-semibold text-amber-50">
-                    Payout {fmt(payout)}
-                  </span>
-                </div>
-                <Leaf className="w-7 h-7 sm:w-9 sm:h-9 text-lime-200 rotate-[35deg] scale-x-[-1] flex-none drop-shadow" />
-              </motion.div>
-            ) : status === "lost" ? (
-              <motion.div
-                key="lost-banner"
-                initial={{ opacity: 0, scale: 0.92, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 320, damping: 22 }}
-                className="rounded-2xl border border-rose-500 bg-[radial-gradient(ellipse_at_center,#EF5B67_0%,#D93645_60%,#B8232E_100%)] shadow-[0_10px_24px_rgba(217,54,69,0.3),inset_0_1px_2px_rgba(255,255,255,0.35)] px-4 py-4 flex flex-col items-center text-center"
-              >
-                <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-serif font-bold uppercase tracking-[0.18em] text-rose-50">
-                  <X className="w-3.5 h-3.5" strokeWidth={3} />
-                  Round lost
-                </span>
-                <span className="text-3xl sm:text-4xl font-serif font-extrabold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)]">
-                  -{roundBet.toFixed(2)} USD
-                </span>
-                {lossNote && (
-                  <span className="mt-1 text-[11px] sm:text-xs font-serif font-semibold text-rose-50">
-                    {lossNote}
-                  </span>
-                )}
-              </motion.div>
-            ) : (
-              <div
-                className={`rounded-xl border px-4 py-2.5 text-center text-xs sm:text-sm font-serif font-bold whitespace-pre ${statusPill.cls}`}
-              >
-                {statusPill.text}
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Historia */}
             <div
@@ -643,12 +721,6 @@ export default function HiLoGame({
                               text: `${(step.mult ?? 1).toFixed(2)}x`,
                               cls: "bg-emerald-600 text-white",
                             };
-                    const badgeCls =
-                      step.result === "win"
-                        ? "bg-emerald-500 text-white"
-                        : step.result === "loss"
-                          ? "bg-rose-500 text-white"
-                          : "bg-stone-400 text-white";
                     return (
                       <motion.div
                         key={step.id}
@@ -659,21 +731,6 @@ export default function HiLoGame({
                           index > 0 ? "ml-6" : ""
                         }`}
                       >
-                        {index > 0 && (
-                          <div
-                            className={`absolute -left-[22px] top-[40px] sm:top-[57px] -translate-y-1/2 z-10 w-5 h-5 rounded-md flex items-center justify-center shadow ${badgeCls}`}
-                          >
-                            {step.guess === "higher" ? (
-                              <ArrowUp className="w-3 h-3" strokeWidth={3} />
-                            ) : step.guess === "lower" ? (
-                              <ArrowDown className="w-3 h-3" strokeWidth={3} />
-                            ) : step.guess === "same" ? (
-                              <Equal className="w-3 h-3" strokeWidth={3} />
-                            ) : (
-                              <ChevronsRight className="w-3 h-3" strokeWidth={3} />
-                            )}
-                          </div>
-                        )}
                         <CardFace
                           card={step.card}
                           className={`w-[56px] h-[80px] sm:w-[80px] sm:h-[114px] ${
@@ -698,20 +755,8 @@ export default function HiLoGame({
           </div>
 
           {/* CONTROLS */}
-          <div className="order-2 lg:order-1 rounded-2xl p-3 sm:p-4 border border-[#E5DAC8] bg-[#F4EFE6] flex flex-col gap-4">
-            <button
-              onClick={handleMainButton}
-              disabled={mainDisabled}
-              className={`order-1 lg:order-4 w-full py-3.5 px-2 text-white font-serif font-bold text-sm sm:text-base rounded-2xl shadow-lg border cursor-pointer transition-all active:scale-[0.98] whitespace-nowrap leading-tight disabled:cursor-not-allowed ${
-                playing
-                  ? "bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-800 enabled:hover:from-emerald-600 enabled:hover:to-emerald-700 border-emerald-400/50 disabled:from-stone-500 disabled:via-stone-500 disabled:to-stone-600 disabled:border-stone-400"
-                  : "bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 hover:from-amber-500 hover:to-amber-600 border-amber-400/50"
-              }`}
-            >
-              {mainLabel}
-            </button>
-
-            <div className="order-2 lg:order-1 flex flex-col gap-2">
+          <div className="order-2 lg:order-1 rounded-2xl p-3 sm:p-4 border border-[#E5DAC8] bg-[#F4EFE6] flex flex-col justify-between gap-4">
+            <div className="flex flex-col gap-3">
               <div className="text-xs font-semibold px-1 text-[#8C827A]">
                 Bet Amount
               </div>
@@ -731,7 +776,7 @@ export default function HiLoGame({
                     value={betAmount}
                     disabled={playing}
                     onChange={(e) => setBetAmount(e.target.value)}
-                    className="gyre-num bg-transparent outline-none py-2 w-full text-base font-bold font-mono text-[#2D2621] disabled:opacity-100 disabled:text-[#8C827A]"
+                    className="gyre-num bg-transparent outline-none py-2.5 w-full text-base font-bold font-mono text-[#2D2621] disabled:opacity-100 disabled:text-[#8C827A]"
                   />
                 </div>
                 <button
@@ -767,18 +812,19 @@ export default function HiLoGame({
               </div>
             </div>
 
-            <div className="hidden lg:flex lg:order-2 flex-col gap-2">
-              {guessRow("left")}
-              {guessRow("right")}
-            </div>
-
-            {/* Skip card (työpöytä): mobiilissa nappi on pelilaudalla kertoimen yläpuolella */}
+            {/* Pääpainike / Cashout työpöydällä */}
             <button
-              type="button"
-              onClick={skipCard}
-              className="hidden lg:block lg:order-3 w-full py-3 rounded-xl border-2 border-[#2D2621] bg-[#FAF6F0] hover:bg-[#EFE8DC] text-[#2D2621] font-serif font-bold text-sm transition-all active:scale-[0.98] cursor-pointer shadow-sm"
+              onClick={handleMainButton}
+              disabled={mainDisabled}
+              className={`hidden lg:block w-full py-4 px-3 text-white font-serif font-bold text-base sm:text-lg rounded-2xl shadow-xl border cursor-pointer transition-all active:scale-[0.98] whitespace-nowrap leading-tight disabled:cursor-not-allowed ${
+                playing
+                  ? canCashout
+                    ? "bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border-emerald-300 ring-4 ring-emerald-500/20"
+                    : "bg-gradient-to-r from-stone-600 to-stone-700 border-stone-500 opacity-80"
+                  : "bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 hover:from-amber-500 hover:to-amber-600 border-amber-400/50"
+              }`}
             >
-              Skip card
+              {mainLabel}
             </button>
           </div>
         </div>
