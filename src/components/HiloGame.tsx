@@ -55,7 +55,7 @@ const isRed = (suit: number) => suit === 1 || suit === 2;
 interface GuessOption {
   dir: Direction;
   label: string;
-  p: number; // voittotodennäköisyys
+  p: number;
   strict: boolean;
 }
 
@@ -102,13 +102,14 @@ function playSound(src: string, volume = 1.0) {
   audio.play().catch(() => {});
 }
 
-function AnimatedBalance({ value }: { value: number }) {
+// Animoitu numerolaskuri (käytetään nyt suoraan kotiutussummalle)
+function AnimatedValue({ value }: { value: number }) {
   const count = useMotionValue(value);
   const [displayValue, setDisplayValue] = useState("$" + value.toFixed(2));
 
   useEffect(() => {
     const controls = animate(count, value, {
-      duration: 0.8,
+      duration: 0.6,
       ease: "easeOut",
       onUpdate: (latest) => {
         setDisplayValue("$" + latest.toFixed(2));
@@ -356,7 +357,7 @@ export default function HiLoGame({
     </div>
   );
 
-const guessRow = (slot: "left" | "right") => {
+  const guessRow = (slot: "left" | "right") => {
     const opt = slot === "left" ? leftOpt : rightOpt;
     const disabled = !playing;
     const m = multFor(opt.p);
@@ -482,41 +483,9 @@ const guessRow = (slot: "left" | "right") => {
               Higher or lower? Climb the ladder, cash out in time.
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsWalletOpen(true)}
-            className="group flex items-center gap-3 bg-[#F0E8DC] hover:bg-[#EAE0D0] px-4 py-2.5 rounded-2xl border border-[#E2D6C3] shadow-inner transition-colors cursor-pointer active:scale-[0.98]"
-          >
-            <div>
-              <div className="text-[10px] uppercase font-semibold tracking-wider text-right text-[#8C827A]">
-                Balance
-              </div>
-              <div className="text-xl sm:text-2xl font-bold font-mono text-[#2D2621]">
-                <AnimatedBalance value={balance} />
-              </div>
-            </div>
-
-            <div className="w-9 h-9 rounded-xl bg-[#FAF6F0] flex items-center justify-center border border-[#E2D6C3] shadow-sm text-amber-700 group-hover:scale-105 transition-transform pointer-events-none">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
-                <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-3" />
-              </svg>
-            </div>
-          </button>
         </div>
 
-        {/* Mobiilissa Current Cashout Value -laatikko tuotu heti ylös ennen pelialuetta */}
+        {/* Mobiilissa Current Cashout Value -laatikko animoidulla laskurilla heti ylhäällä */}
         <div className="block lg:hidden mb-4">
           {playing ? (
             <div className="rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-r from-[#FBF3D5] via-[#FBF3D5] to-[#F3E5AB] px-5 py-3.5 flex items-center justify-between gap-3 shadow-md">
@@ -530,7 +499,7 @@ const guessRow = (slot: "left" | "right") => {
               </div>
               <div className="text-right">
                 <span className="text-2xl font-mono font-extrabold text-emerald-900 leading-none block">
-                  {fmt(payout)}
+                  <AnimatedValue value={payout} />
                 </span>
               </div>
             </div>
@@ -613,7 +582,7 @@ const guessRow = (slot: "left" | "right") => {
               </div>
             </div>
 
-            {/* Mobiilissa Cashout-painike pelialueen sisällä (entisen kertoimbaatterin paikalla) */}
+            {/* Mobiilissa Cashout-painike pelialueen sisällä */}
             <div className="block lg:hidden">
               <button
                 onClick={handleMainButton}
@@ -630,7 +599,7 @@ const guessRow = (slot: "left" | "right") => {
               </button>
             </div>
 
-            {/* Työpöydällä näytetään kertoimbaatteri tällä paikalla */}
+            {/* Työpöydällä näytetään kertoimbaatteri animoidulla summalla */}
             <div className="hidden lg:block">
               {playing ? (
                 <div className="rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-r from-[#FBF3D5] via-[#FBF3D5] to-[#F3E5AB] px-5 py-3.5 flex items-center justify-between gap-3 shadow-md">
@@ -644,7 +613,7 @@ const guessRow = (slot: "left" | "right") => {
                   </div>
                   <div className="text-right">
                     <span className="text-3xl font-mono font-extrabold text-emerald-900 leading-none block">
-                      {fmt(payout)}
+                      <AnimatedValue value={payout} />
                     </span>
                   </div>
                 </div>
