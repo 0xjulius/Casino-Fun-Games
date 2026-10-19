@@ -5,7 +5,7 @@ interface HeaderProps {
   onDeposit?: () => void;
 }
 
-export default function Header({ balance = 1250.50, onDeposit }: HeaderProps) {
+export default function Header({ balance = 2000.00, onDeposit }: HeaderProps) {
   // Muotoillaan saldo selkeäksi dollarisummaksi ($2,000.00)
   const formattedBalance = "$" + balance.toLocaleString("en-US", {
     minimumFractionDigits: 2,

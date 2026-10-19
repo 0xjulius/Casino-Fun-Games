@@ -60,7 +60,7 @@ export default function CrashPage() {
         <div className="shrink-0 z-30">
           <Header 
             balance={balance} 
-            onDeposit={() => setBalance((prev) => prev + 100.00)} 
+            onDeposit={() => setBalance((prev) => prev + 2000.00)} 
           />
         </div>
 
