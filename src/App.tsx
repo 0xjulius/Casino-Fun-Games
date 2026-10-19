@@ -6,6 +6,7 @@ import Header from "./components/Header";
 import RouletteGame from "./components/RouletteGame";
 import CrashGame from "./components/CrashGame";
 import PlinkoGame from "./components/PlinkoGame"; 
+import HiloGame from "./components/HiloGame"; 
 import WelcomeModal from "./components/WelcomeModal";
 import GoldDust from "./components/GoldDust";
 import bgImage from "./assets/bg2.png";
@@ -23,6 +24,8 @@ export default function App() {
     ? "Crash" 
     : location.pathname.includes("plinko") 
     ? "Plinko" 
+    : location.pathname.includes("hilo")
+    ? "Hilo"
     : "Roulette";
 
   useEffect(() => {
@@ -34,6 +37,8 @@ export default function App() {
       navigate("/crash");
     } else if (game === "Plinko") {
       navigate("/plinko");
+    } else if (game === "Hilo") {
+      navigate("/hilo");
     } else if (game === "Roulette") {
       navigate("/");
     }
@@ -106,6 +111,15 @@ export default function App() {
                 path="/plinko" 
                 element={
                   <PlinkoGame 
+                    balance={balance}
+                    setBalance={setBalance}
+                  />
+                } 
+              />
+              <Route 
+                path="/hilo" 
+                element={
+                  <HiloGame 
                     balance={balance}
                     setBalance={setBalance}
                   />

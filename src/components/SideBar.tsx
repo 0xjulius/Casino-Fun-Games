@@ -9,6 +9,7 @@ import {
   Dices, 
   Gem, 
   Bomb,
+  Layers, // Käytetään Hi-Lo -pelille sopivaa ikonia
   ChevronLeft,
   ChevronRight,
   MessageSquare
@@ -22,9 +23,10 @@ interface SidebarProps {
 
 const navItems = [
   { name: "Roulette", icon: CircleDollarSign, available: true },
-  { name: "Crash", icon: Rocket, available: true }, // Nyt myös Crash on aktiivinen!
-  { name: "Duels", icon: RefreshCw, available: false },
+  { name: "Crash", icon: Rocket, available: true },
+  { name: "Hilo", icon: Layers, available: true, isNew: true }, // Lisätty Hi-Lo ja uusi merkki
   { name: "Plinko", icon: Triangle, available: true },
+  { name: "Duels", icon: RefreshCw, available: false },
   { name: "Dice", icon: Dices, available: false },
   { name: "Towers", icon: Gem, available: false },
   { name: "Mines", icon: Bomb, available: false },
@@ -49,18 +51,13 @@ export default function Sidebar({ activeGame = "Plinko", onSelectGame, onOpenCha
 
   const handleItemClick = (item: typeof navItems[0]) => {
     if (!item.available) return;
-
-    // Jos haluat erillisen reitityksen esim. Rouletuelle tai Crashille, voit lisätä tarkistuksen tähän:
-    // if (item.name === "Roulette") { router.push("/roulette"); return; }
-    // if (item.name === "Crash") { router.push("/crash"); return; }
-
     onSelectGame?.(item.name);
   };
 
   return (
     <>
       {/* Mobile Bottom Navigation Bar */}
-      <aside className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#FAF6F0]/95 backdrop-blur-md border-t border-[#E2D6C3] flex items-center justify-around p-2 shadow-lg">
+      <aside className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#FAF6F0]/95 backdrop-blur-md border-t border-[#E2D6C3] flex items-center justify-around p-2 shadow-lg overflow-x-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeGame === item.name;
@@ -70,7 +67,7 @@ export default function Sidebar({ activeGame = "Plinko", onSelectGame, onOpenCha
               key={item.name}
               onClick={() => handleItemClick(item)}
               disabled={!item.available}
-              className={`p-2.5 rounded-xl transition-all flex items-center justify-center relative ${
+              className={`p-2.5 rounded-xl transition-all flex items-center justify-center relative shrink-0 ${
                 !item.available
                   ? "opacity-40 cursor-not-allowed"
                   : isActive
@@ -80,13 +77,18 @@ export default function Sidebar({ activeGame = "Plinko", onSelectGame, onOpenCha
               title={item.available ? item.name : `${item.name} (Coming soon)`}
             >
               <Icon className={`w-5 h-5 ${isActive ? "text-[#D4AF37]" : "text-[#8C827A]"}`} />
+              {item.isNew && item.available && (
+                <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-[9px] font-bold px-1 rounded-full uppercase tracking-tighter shadow-sm animate-pulse">
+                  New
+                </span>
+              )}
             </button>
           );
         })}
 
         <button
           onClick={onOpenChat}
-          className="p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center text-[#8C827A] hover:text-[#2D2621] bg-[#D4AF37]/10 border border-[#D4AF37]/30"
+          className="p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center text-[#8C827A] hover:text-[#2D2621] bg-[#D4AF37]/10 border border-[#D4AF37]/30 shrink-0"
           title="Avaa chat"
         >
           <MessageSquare className="w-5 h-5 text-amber-700" />
@@ -114,7 +116,7 @@ export default function Sidebar({ activeGame = "Plinko", onSelectGame, onOpenCha
           </button>
         </div>
 
-        <div className="space-y-1.5 flex-1">
+        <div className="space-y-1.5 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeGame === item.name;
@@ -138,10 +140,19 @@ export default function Sidebar({ activeGame = "Plinko", onSelectGame, onOpenCha
                   {!isCollapsed && <span className="truncate">{item.name}</span>}
                 </div>
 
-                {!isCollapsed && !item.available && (
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-[#EFE8DC] text-stone-500 border border-[#E2D6C3]/60 shrink-0">
-                    Soon
-                  </span>
+                {!isCollapsed && (
+                  <div className="flex items-center gap-1.5">
+                    {item.isNew && item.available && (
+                      <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-800 border border-amber-400/50 shrink-0">
+                        New
+                      </span>
+                    )}
+                    {!item.available && (
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-[#EFE8DC] text-stone-500 border border-[#E2D6C3]/60 shrink-0">
+                        Soon
+                      </span>
+                    )}
+                  </div>
                 )}
               </button>
             );
