@@ -9,7 +9,7 @@ import {
   Dices, 
   Gem, 
   Bomb,
-  Layers, // Käytetään Hi-Lo -pelille sopivaa ikonia
+  Layers, 
   ChevronLeft,
   ChevronRight,
   MessageSquare
@@ -24,7 +24,7 @@ interface SidebarProps {
 const navItems = [
   { name: "Roulette", icon: CircleDollarSign, available: true },
   { name: "Crash", icon: Rocket, available: true },
-  { name: "Hilo", icon: Layers, available: true, isNew: true }, // Lisätty Hi-Lo ja uusi merkki
+  { name: "Hilo", icon: Layers, available: true, isNew: true },
   { name: "Plinko", icon: Triangle, available: true },
   { name: "Duels", icon: RefreshCw, available: false },
   { name: "Dice", icon: Dices, available: false },
@@ -101,7 +101,7 @@ export default function Sidebar({ activeGame = "Plinko", onSelectGame, onOpenCha
           isCollapsed ? "w-20 p-3" : "w-64 p-4"
         }`}
       >
-        <div className="flex items-center justify-between mb-6 px-2 pt-2">
+        <div className={`flex items-center mb-6 pt-2 ${isCollapsed ? "justify-center px-0" : "justify-between px-2"}`}>
           {!isCollapsed && (
             <span className="font-serif font-bold text-lg tracking-wide text-[#2D2621]">
               Lobby <span className="text-amber-600">✦</span>
@@ -109,7 +109,7 @@ export default function Sidebar({ activeGame = "Plinko", onSelectGame, onOpenCha
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1.5 rounded-xl bg-[#F0E8DC]/80 hover:bg-[#E2D6C3] text-[#2D2621] transition-all cursor-pointer mx-auto md:mx-0"
+            className="p-1.5 rounded-xl bg-[#F0E8DC]/80 hover:bg-[#E2D6C3] text-[#2D2621] transition-all cursor-pointer"
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -126,7 +126,9 @@ export default function Sidebar({ activeGame = "Plinko", onSelectGame, onOpenCha
                 key={item.name}
                 onClick={() => handleItemClick(item)}
                 disabled={!item.available}
-                className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl font-medium text-sm transition-all ${
+                className={`w-full flex items-center ${
+                  isCollapsed ? "justify-center py-3 px-0" : "justify-between px-3 py-3"
+                } rounded-2xl font-medium text-sm transition-all ${
                   !item.available
                     ? "opacity-50 cursor-not-allowed bg-transparent text-[#8C827A]/60 border border-transparent"
                     : isActive
