@@ -204,7 +204,8 @@ export default function HiLoGame({
   const [_message, setMessage] = useState<string>("");
   const [lossNote, setLossNote] = useState<string>("");
 
-  const [hoveredTarget, setHoveredTarget] = useState<{
+  // Tukee sekä tietokoneen hoveria että mobiilin klikkausta/napautusta
+  const [activeTooltip, setActiveTooltip] = useState<{
     id: number;
     rect: DOMRect;
   } | null>(null);
@@ -350,7 +351,6 @@ export default function HiLoGame({
         ];
       }
 
-      // 1. Merkitään nykyinen/viimeinen kortti skipatuksi
       const updated = [...h];
       const lastIndex = updated.length - 1;
       updated[lastIndex] = {
@@ -360,7 +360,6 @@ export default function HiLoGame({
         guess: "skip",
       };
 
-      // 2. Lisätään uusi nostettu kortti historiaan normaalisti (EI skipattuna)
       return [
         ...updated,
         {
@@ -790,7 +789,6 @@ export default function HiLoGame({
                       labelContent = <span>Current card</span>;
                       labelCls = "bg-amber-600 text-white";
                     } else if (isCashedCard) {
-                      // Kotiutuksen tehnyt kortti näyttää "Cashed out" ja lopullisen kertoimen
                       labelContent = (
                         <span className="flex items-center gap-1">
                           {step.guess === "higher" && (
@@ -845,21 +843,25 @@ export default function HiLoGame({
                       );
                       labelCls = "bg-emerald-600 text-white";
                     }
-                    const isHovered = hoveredTarget?.id === step.id;
+
+                    const isTooltipOpen = activeTooltip?.id === step.id;
 
                     return (
                       <div key={step.id} className="relative flex-none">
                         <HistoryCardTooltip
-                          isOpen={isHovered}
-                          targetRect={hoveredTarget?.rect || null}
+                          isOpen={isTooltipOpen}
+                          targetRect={activeTooltip?.rect || null}
                           cardRank={RANKS[step.card.rank - 1]}
                           cardSuit={SUITS[step.card.suit]}
                           roundBet={roundBet}
                           stepMult={step.stepMult ?? null}
                           cumMultBefore={cumMultBefore}
+                          cumMultTotal={cumMult}
                           isLoss={step.result === "loss"}
+                          isCashed={isCashedCard}
                           isStartCard={
-                            step.guess === null && fullHistoryIndex === 0
+                            !hasGuessed &&
+                            (step.guess === null || fullHistoryIndex === 0)
                           }
                           isCurrentCard={isCurrentCard}
                           isSkipped={step.skipped}
@@ -873,12 +875,27 @@ export default function HiLoGame({
                             stiffness: 380,
                             damping: 26,
                           }}
+                          // Hiiri tuodaan kortin päälle (PC)
                           onMouseEnter={(e) => {
                             const rect =
                               e.currentTarget.getBoundingClientRect();
-                            setHoveredTarget({ id: step.id, rect });
+                            setActiveTooltip({ id: step.id, rect });
                           }}
-                          onMouseLeave={() => setHoveredTarget(null)}
+                          // Hiiri poistuu kortin päältä (suljetaan, ellei haluta erillistä lukitusta)
+                          onMouseLeave={() => {
+                            setActiveTooltip(null);
+                          }}
+                          // Mobiilissa napautus avaa/sulkee
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            if (activeTooltip?.id === step.id) {
+                              setActiveTooltip(null);
+                            } else {
+                              setActiveTooltip({ id: step.id, rect });
+                            }
+                          }}
                           className={`flex-none flex flex-col items-center gap-1.5 cursor-pointer ${
                             index > 0 ? "ml-6" : ""
                           }`}
