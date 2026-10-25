@@ -14,6 +14,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import DemoWalletModal from "./DemoWalletModal";
+import HistoryCardTooltip from "./HistoryCardTooltip";
 import "../App.css";
 import {
   motion,
@@ -40,15 +41,30 @@ interface HiLoCard {
 interface HistoryStep {
   id: number;
   card: HiLoCard;
-  guess: Direction | "skip" | null; // null = aloituskortti
-  mult: number | null; // kumulatiivinen kerroin kortin jälkeen
+  guess: Direction | "skip" | null;
+  mult: number | null;
+  stepMult?: number | null;
   result: "win" | "loss" | "skip" | null;
   skipped?: boolean;
 }
 
 const RTP = 0.98;
 
-const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const RANKS = [
+  "A",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "J",
+  "Q",
+  "K",
+];
 const SUITS = ["♠", "♥", "♦", "♣"];
 const isRed = (suit: number) => suit === 1 || suit === 2;
 
@@ -73,7 +89,12 @@ function getOptions(rank: number): [GuessOption, GuessOption] {
     ];
   }
   return [
-    { dir: "higher", label: "Higher / same", p: (14 - rank) / 13, strict: false },
+    {
+      dir: "higher",
+      label: "Higher / same",
+      p: (14 - rank) / 13,
+      strict: false,
+    },
     { dir: "lower", label: "Lower / same", p: rank / 13, strict: false },
   ];
 }
@@ -102,7 +123,6 @@ function playSound(src: string, volume = 1.0) {
   audio.play().catch(() => {});
 }
 
-// Animoitu numerolaskuri (käytetään nyt suoraan kotiutussummalle)
 function AnimatedValue({ value }: { value: number }) {
   const count = useMotionValue(value);
   const [displayValue, setDisplayValue] = useState("$" + value.toFixed(2));
@@ -122,7 +142,6 @@ function AnimatedValue({ value }: { value: number }) {
   return <span>{displayValue}</span>;
 }
 
-// ---------- Kortti ----------
 function CardFace({
   card,
   className = "",
@@ -178,14 +197,17 @@ export default function HiLoGame({
   const [betError, setBetError] = useState<boolean>(false);
 
   const [status, setStatus] = useState<Status>("idle");
-  const [currentCard, setCurrentCard] = useState<HiLoCard>(() =>
-    drawCard(0),
-  );
+  const [currentCard, setCurrentCard] = useState<HiLoCard>(() => drawCard(0));
   const [history, setHistory] = useState<HistoryStep[]>([]);
   const [cumMult, setCumMult] = useState<number>(1);
   const [roundBet, setRoundBet] = useState<number>(0);
   const [_message, setMessage] = useState<string>("");
   const [lossNote, setLossNote] = useState<string>("");
+
+  const [hoveredTarget, setHoveredTarget] = useState<{
+    id: number;
+    rect: DOMRect;
+  } | null>(null);
 
   const historyRef = useRef<HTMLDivElement>(null);
 
@@ -221,14 +243,21 @@ export default function HiLoGame({
     playSound("/sounds/bet.wav", 0.5);
     setBalance((b) => b - amount);
 
-    const start = status === "idle" ? currentCard : drawCard(nextId());
+    const start = currentCard;
     setCurrentCard(start);
     setRoundBet(amount);
     setCumMult(1);
     setMessage("");
     setLossNote("");
     setHistory([
-      { id: nextId(), card: start, guess: null, mult: null, result: null },
+      {
+        id: nextId(),
+        card: start,
+        guess: null,
+        mult: null,
+        stepMult: null,
+        result: null,
+      },
     ]);
     setStatus("playing");
   }
@@ -240,24 +269,58 @@ export default function HiLoGame({
 
     const next = drawCard(nextId());
     const win = isWin(opt, rank, next.rank);
-
-    setCurrentCard(next);
+    const chosenStepMult = multFor(opt.p);
 
     if (win) {
-      const m = cumMult * multFor(opt.p);
-      setCumMult(m);
-      setHistory((h) => [
-        ...h,
-        { id: nextId(), card: next, guess: opt.dir, mult: m, result: "win" },
-      ]);
+      const newCumMult = cumMult * chosenStepMult;
+      setCumMult(newCumMult);
+
+      setHistory((h) => {
+        if (h.length === 0) return h;
+
+        const updated = [...h];
+        const lastIndex = updated.length - 1;
+        updated[lastIndex] = {
+          ...updated[lastIndex],
+          stepMult: chosenStepMult,
+          mult: newCumMult,
+          guess: opt.dir,
+          result: "win",
+        };
+
+        return [
+          ...updated,
+          {
+            id: nextId(),
+            card: next,
+            guess: null,
+            mult: newCumMult,
+            stepMult: null,
+            result: null,
+          },
+        ];
+      });
+
+      setCurrentCard(next);
     } else {
-      setHistory((h) => [
-        ...h,
-        { id: nextId(), card: next, guess: opt.dir, mult: null, result: "loss" },
-      ]);
+      setHistory((h) => {
+        const updated = [...h];
+        if (updated.length > 0) {
+          const lastIndex = updated.length - 1;
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            stepMult: chosenStepMult,
+            guess: opt.dir,
+            result: "loss",
+          };
+        }
+        return updated;
+      });
+
+      setCurrentCard(next);
       setStatus("lost");
       playSound("/sounds/lose.wav", 0.25);
-      setMessage(`Round lost  -${fmt(roundBet)}`);
+      setMessage(`Round lost -${fmt(roundBet)}`);
       setLossNote(
         next.rank === rank
           ? `Same card (${RANKS[rank - 1]}) - only "Same" would have won`
@@ -267,23 +330,50 @@ export default function HiLoGame({
   }
 
   function skipCard() {
+    if (!playing) return;
+
     playSound("/sounds/card-flick.wav", 1.0);
     const next = drawCard(nextId());
     setCurrentCard(next);
 
-    if (!playing) return;
+    setHistory((h) => {
+      if (h.length === 0) {
+        return [
+          {
+            id: nextId(),
+            card: next,
+            guess: null,
+            mult: null,
+            stepMult: null,
+            result: null,
+          },
+        ];
+      }
 
-    if (history.length <= 1) {
-      setHistory([
-        { id: nextId(), card: next, guess: null, mult: null, result: null },
-      ]);
-    } else {
-      setHistory((h) => [
-        ...h.slice(0, -1),
-        { ...h[h.length - 1], skipped: true },
-        { id: nextId(), card: next, guess: "skip", mult: cumMult, result: "skip" },
-      ]);
-    }
+      // 1. Merkitään nykyinen/viimeinen kortti skipatuksi
+      const updated = [...h];
+      const lastIndex = updated.length - 1;
+      updated[lastIndex] = {
+        ...updated[lastIndex],
+        skipped: true,
+        result: "skip",
+        guess: "skip",
+      };
+
+      // 2. Lisätään uusi nostettu kortti historiaan normaalisti (EI skipattuna)
+      return [
+        ...updated,
+        {
+          id: nextId(),
+          card: next,
+          guess: null,
+          mult: cumMult,
+          stepMult: null,
+          result: null,
+          skipped: false,
+        },
+      ];
+    });
   }
 
   function cashout() {
@@ -292,7 +382,7 @@ export default function HiLoGame({
     if (payout > roundBet) playSound("/sounds/win.wav", 1.0);
     setStatus("cashed");
     setMessage(
-      `Cashed out ${fmt(payout)} at x${cumMult.toFixed(2)}  +${fmt(payout - roundBet)}`,
+      `Cashed out ${fmt(payout)} at x${cumMult.toFixed(2)} +${fmt(payout - roundBet)}`,
     );
   }
 
@@ -338,9 +428,9 @@ export default function HiLoGame({
             card={currentCard}
             ring={ringClass}
             corners
-            className="w-[124px] h-[178px] sm:w-[150px] sm:h-[215px] lg:w-[176px] lg:h-[252px]"
-            rankClass="text-6xl sm:text-7xl lg:text-8xl"
-            suitClass="text-4xl sm:text-5xl lg:text-6xl"
+            className="w-[124px] h-[178px] sm:w-[150px] sm:h-[215px] xl:w-[176px] xl:h-[252px]"
+            rankClass="text-6xl sm:text-7xl xl:text-8xl"
+            suitClass="text-4xl sm:text-5xl xl:text-6xl"
           />
         </motion.div>
       </AnimatePresence>
@@ -386,7 +476,10 @@ export default function HiLoGame({
           ) : opt.dir === "lower" ? (
             <ArrowDown className="w-3 h-3 text-rose-600 flex-none" />
           ) : (
-            <Equal className="w-3 h-3 text-amber-700 flex-none" strokeWidth={3} />
+            <Equal
+              className="w-3 h-3 text-amber-700 flex-none"
+              strokeWidth={3}
+            />
           )}
           {(opt.p * 100).toFixed(1)}%
         </div>
@@ -423,10 +516,10 @@ export default function HiLoGame({
               disabled
                 ? "bg-[#D9CDB6] border-[#C2B59C] text-[#6F665C]"
                 : opt.dir === "higher"
-                ? "bg-emerald-100 border-emerald-300 text-emerald-800"
-                : opt.dir === "lower"
-                ? "bg-rose-100 border-rose-300 text-rose-800"
-                : "bg-amber-100 border-amber-300 text-amber-800"
+                  ? "bg-emerald-100 border-emerald-300 text-emerald-800"
+                  : opt.dir === "lower"
+                    ? "bg-rose-100 border-rose-300 text-rose-800"
+                    : "bg-amber-100 border-amber-300 text-amber-800"
             }`}
           >
             {(opt.p * 100).toFixed(1)}%
@@ -485,8 +578,7 @@ export default function HiLoGame({
           </div>
         </div>
 
-        {/* Mobiilissa Current Cashout Value -laatikko animoidulla laskurilla heti ylhäällä */}
-        <div className="block lg:hidden mb-4">
+        <div className="block xl:hidden mb-4">
           {playing ? (
             <div className="rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-r from-[#FBF3D5] via-[#FBF3D5] to-[#F3E5AB] px-5 py-3.5 flex items-center justify-between gap-3 shadow-md">
               <div className="flex flex-col">
@@ -494,7 +586,7 @@ export default function HiLoGame({
                   Current Cashout Value
                 </span>
                 <span className="text-xs font-mono font-semibold text-amber-800">
-                  Multiplier: x{cumMult.toFixed(2)}
+                  Total Multiplier: x{cumMult.toFixed(2)}
                 </span>
               </div>
               <div className="text-right">
@@ -539,7 +631,7 @@ export default function HiLoGame({
                 Round lost
               </span>
               <span className="text-3xl font-serif font-extrabold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)]">
-                -{roundBet.toFixed(2)} USD
+                <AnimatedValue value={payout} />
               </span>
               {lossNote && (
                 <span className="mt-1 text-xs font-serif font-semibold text-rose-50">
@@ -554,18 +646,15 @@ export default function HiLoGame({
           )}
         </div>
 
-        <div className="flex flex-col lg:grid lg:grid-cols-[300px_1fr] gap-4 mb-6">
-          
-          {/* BOARD */}
-          <div className="order-1 lg:order-2 rounded-2xl border border-[#E2D6C3] bg-[#EFE8DC] shadow-[inset_0_2px_6px_rgba(0,0,0,0.05)] p-3 sm:p-5 flex flex-col gap-4">
-            
-            <div className="hidden lg:grid grid-cols-[1fr_auto_1fr] items-center justify-items-center gap-2 sm:gap-6 py-2 sm:py-4">
+        <div className="flex flex-col xl:grid xl:grid-cols-[300px_1fr] gap-4 mb-6">
+          <div className="order-1 xl:order-2 rounded-2xl border border-[#E2D6C3] bg-[#EFE8DC] shadow-[inset_0_2px_6px_rgba(0,0,0,0.05)] p-3 sm:p-5 flex flex-col gap-4">
+            <div className="hidden xl:grid grid-cols-[1fr_auto_1fr] items-center justify-items-center gap-2 sm:gap-6 py-2 sm:py-4">
               {bigGuessCard("left")}
               {currentStack}
               {bigGuessCard("right")}
             </div>
 
-            <div className="lg:hidden flex items-stretch gap-3">
+            <div className="xl:hidden flex items-stretch gap-3">
               <div className="flex-none pt-3 pr-2">{currentStack}</div>
 
               <div className="flex flex-col items-center self-stretch text-[11px] font-bold text-stone-500 py-1">
@@ -582,8 +671,7 @@ export default function HiLoGame({
               </div>
             </div>
 
-            {/* Mobiilissa Cashout-painike pelialueen sisällä */}
-            <div className="block lg:hidden">
+            <div className="block xl:hidden">
               <button
                 onClick={handleMainButton}
                 disabled={mainDisabled}
@@ -599,8 +687,7 @@ export default function HiLoGame({
               </button>
             </div>
 
-            {/* Työpöydällä näytetään kertoimbaatteri animoidulla summalla */}
-            <div className="hidden lg:block">
+            <div className="hidden xl:block">
               {playing ? (
                 <div className="rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-r from-[#FBF3D5] via-[#FBF3D5] to-[#F3E5AB] px-5 py-3.5 flex items-center justify-between gap-3 shadow-md">
                   <div className="flex flex-col">
@@ -608,7 +695,7 @@ export default function HiLoGame({
                       Current Cashout Value
                     </span>
                     <span className="text-xs font-mono font-semibold text-amber-800">
-                      Multiplier: x{cumMult.toFixed(2)}
+                      Total Multiplier: x{cumMult.toFixed(2)}
                     </span>
                   </div>
                   <div className="text-right">
@@ -653,7 +740,7 @@ export default function HiLoGame({
                     Round lost
                   </span>
                   <span className="text-4xl font-serif font-extrabold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)]">
-                    -{roundBet.toFixed(2)} USD
+                    <AnimatedValue value={payout} />
                   </span>
                   {lossNote && (
                     <span className="mt-1 text-xs font-serif font-semibold text-rose-50">
@@ -668,10 +755,9 @@ export default function HiLoGame({
               )}
             </div>
 
-            {/* Historia */}
             <div
               ref={historyRef}
-              className="rounded-xl border border-[#E2D6C3] bg-[#F4EFE6] shadow-inner px-3 sm:px-4 py-3 overflow-x-auto min-h-[148px] sm:min-h-[196px] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-[#EFE8DC] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D4AF37]/50 [&::-webkit-scrollbar-thumb]:rounded-full"
+              className="rounded-xl border border-[#E2D6C3] bg-[#F4EFE6] shadow-inner px-3 sm:px-4 py-3 overflow-x-auto min-h-[148px] sm:min-h-[196px] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-[#EFE8DC]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D4AF37]/50 [&::-webkit-scrollbar-thumb]:rounded-full"
             >
               {history.length === 0 ? (
                 <div className="h-[110px] sm:h-[160px] flex items-center justify-center text-xs text-[#8C827A] font-serif">
@@ -679,43 +765,141 @@ export default function HiLoGame({
                 </div>
               ) : (
                 <div className="flex items-start w-max pr-2">
-                  {history.slice(-5).map((step, index) => {
-                    const label = step.skipped
-                      ? { text: "Skipped", cls: "bg-[#D9CDB6] text-[#5C5249]" }
-                      : step.result === null
-                        ? { text: "Start card", cls: "bg-emerald-600 text-white" }
-                        : step.result === "loss"
-                          ? { text: "Lost", cls: "bg-rose-600 text-white" }
-                          : {
-                              text: `${(step.mult ?? 1).toFixed(2)}x`,
-                              cls: "bg-emerald-600 text-white",
-                            };
-                    return (
-                      <motion.div
-                        key={step.id}
-                        initial={{ opacity: 0, scale: 0.7, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ type: "spring", stiffness: 380, damping: 26 }}
-                        className={`relative flex-none flex flex-col items-center gap-1.5 ${
-                          index > 0 ? "ml-6" : ""
-                        }`}
-                      >
-                        <CardFace
-                          card={step.card}
-                          className={`w-[56px] h-[80px] sm:w-[80px] sm:h-[114px] ${
-                            step.result === "loss"
-                              ? "ring-2 ring-rose-500"
-                              : ""
-                          } ${step.skipped ? "grayscale brightness-95" : ""}`}
-                          rankClass="text-2xl sm:text-4xl"
-                          suitClass="text-lg sm:text-2xl"
-                        />
-                        <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] sm:text-[11px] font-bold font-mono whitespace-nowrap ${label.cls}`}
-                        >
-                          {label.text}
+                  {history.slice(-5).map((step, index, arr) => {
+                    const isLast = index === arr.length - 1;
+                    const isCurrentCard = playing && isLast;
+                    const isCashedCard = status === "cashed" && isLast;
+
+                    const fullHistoryIndex = history.findIndex(
+                      (h) => h.id === step.id,
+                    );
+                    const cumMultBefore =
+                      fullHistoryIndex > 0
+                        ? history[fullHistoryIndex - 1].mult
+                        : 1;
+                    const hasGuessed =
+                      step.guess !== null && step.guess !== "skip";
+
+                    let labelContent = null;
+                    let labelCls = "bg-emerald-600 text-white";
+
+                    if (step.skipped) {
+                      labelContent = <span>Skipped</span>;
+                      labelCls = "bg-[#D9CDB6] text-[#5C5249]";
+                    } else if (isCurrentCard) {
+                      labelContent = <span>Current card</span>;
+                      labelCls = "bg-amber-600 text-white";
+                    } else if (isCashedCard) {
+                      // Kotiutuksen tehnyt kortti näyttää "Cashed out" ja lopullisen kertoimen
+                      labelContent = (
+                        <span className="flex items-center gap-1">
+                          {step.guess === "higher" && (
+                            <ArrowUp className="w-3 h-3" />
+                          )}
+                          {step.guess === "lower" && (
+                            <ArrowDown className="w-3 h-3" />
+                          )}
+                          {step.guess === "same" && (
+                            <Equal className="w-3 h-3" strokeWidth={3} />
+                          )}
+                          <span>Cashed out</span>
                         </span>
-                      </motion.div>
+                      );
+                      labelCls = "bg-amber-600 text-white";
+                    } else if (
+                      !hasGuessed &&
+                      (step.guess === null || fullHistoryIndex === 0)
+                    ) {
+                      labelContent = <span>Start card</span>;
+                      labelCls = "bg-emerald-600 text-white";
+                    } else if (step.result === "loss") {
+                      labelContent = (
+                        <span className="flex items-center gap-1">
+                          {step.guess === "higher" && (
+                            <ArrowUp className="w-3 h-3" />
+                          )}
+                          {step.guess === "lower" && (
+                            <ArrowDown className="w-3 h-3" />
+                          )}
+                          {step.guess === "same" && (
+                            <Equal className="w-3 h-3" strokeWidth={3} />
+                          )}
+                          <span>{(step.stepMult ?? 1).toFixed(2)}x</span>
+                        </span>
+                      );
+                      labelCls = "bg-rose-600 text-white";
+                    } else {
+                      labelContent = (
+                        <span className="flex items-center gap-1">
+                          {step.guess === "higher" && (
+                            <ArrowUp className="w-3 h-3" />
+                          )}
+                          {step.guess === "lower" && (
+                            <ArrowDown className="w-3 h-3" />
+                          )}
+                          {step.guess === "same" && (
+                            <Equal className="w-3 h-3" strokeWidth={3} />
+                          )}
+                          <span>{(step.stepMult ?? 1).toFixed(2)}x</span>
+                        </span>
+                      );
+                      labelCls = "bg-emerald-600 text-white";
+                    }
+                    const isHovered = hoveredTarget?.id === step.id;
+
+                    return (
+                      <div key={step.id} className="relative flex-none">
+                        <HistoryCardTooltip
+                          isOpen={isHovered}
+                          targetRect={hoveredTarget?.rect || null}
+                          cardRank={RANKS[step.card.rank - 1]}
+                          cardSuit={SUITS[step.card.suit]}
+                          roundBet={roundBet}
+                          stepMult={step.stepMult ?? null}
+                          cumMultBefore={cumMultBefore}
+                          isLoss={step.result === "loss"}
+                          isStartCard={
+                            step.guess === null && fullHistoryIndex === 0
+                          }
+                          isCurrentCard={isCurrentCard}
+                          isSkipped={step.skipped}
+                        />
+
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.7, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 380,
+                            damping: 26,
+                          }}
+                          onMouseEnter={(e) => {
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            setHoveredTarget({ id: step.id, rect });
+                          }}
+                          onMouseLeave={() => setHoveredTarget(null)}
+                          className={`flex-none flex flex-col items-center gap-1.5 cursor-pointer ${
+                            index > 0 ? "ml-6" : ""
+                          }`}
+                        >
+                          <CardFace
+                            card={step.card}
+                            className={`w-[56px] h-[80px] sm:w-[80px] sm:h-[114px] transition-transform duration-200 hover:-translate-y-1 ${
+                              step.result === "loss"
+                                ? "ring-2 ring-rose-500"
+                                : ""
+                            } ${step.skipped ? "grayscale brightness-95" : ""}`}
+                            rankClass="text-2xl sm:text-4xl"
+                            suitClass="text-lg sm:text-2xl"
+                          />
+                          <span
+                            className={`rounded-md px-2 py-0.5 text-[10px] sm:text-[11px] font-bold font-mono whitespace-nowrap ${labelCls}`}
+                          >
+                            {labelContent}
+                          </span>
+                        </motion.div>
+                      </div>
                     );
                   })}
                 </div>
@@ -723,8 +907,7 @@ export default function HiLoGame({
             </div>
           </div>
 
-          {/* CONTROLS */}
-          <div className="order-2 lg:order-1 rounded-2xl p-3 sm:p-4 border border-[#E5DAC8] bg-[#F4EFE6] flex flex-col justify-between gap-4">
+          <div className="order-2 xl:order-1 rounded-2xl p-3 sm:p-4 border border-[#E5DAC8] bg-[#F4EFE6] flex flex-col justify-between gap-4">
             <div className="flex flex-col gap-3">
               <div className="text-xs font-semibold px-1 text-[#8C827A]">
                 Bet Amount
@@ -781,11 +964,10 @@ export default function HiLoGame({
               </div>
             </div>
 
-            {/* Pääpainike / Cashout työpöydällä */}
             <button
               onClick={handleMainButton}
               disabled={mainDisabled}
-              className={`hidden lg:block w-full py-4 px-3 text-white font-serif font-bold text-base sm:text-lg rounded-2xl shadow-xl border cursor-pointer transition-all active:scale-[0.98] whitespace-nowrap leading-tight disabled:cursor-not-allowed ${
+              className={`hidden xl:block w-full py-4 px-3 text-white font-serif font-bold text-base sm:text-lg rounded-2xl shadow-xl border cursor-pointer transition-all active:scale-[0.98] whitespace-nowrap leading-tight disabled:cursor-not-allowed ${
                 playing
                   ? canCashout
                     ? "bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border-emerald-300 ring-4 ring-emerald-500/20"
